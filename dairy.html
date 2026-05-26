@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fresh From Farmer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f7f3ea;
+            color: #333;
+        }
+        header {
+            background: #4f772d;
+            color: #fff;
+            padding: 20px 16px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.4rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        header p {
+            margin: 8px 0 0;
+            font-size: 1rem;
+            opacity: 0.92;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+        .products, .cart {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+            padding: 18px;
+        }
+        .products h2, .cart h2 {
+            margin-top: 0;
+            color: #2f4f22;
+        }
+        .product-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            position: relative;
+            border: 1px solid #e2d8c7;
+            border-radius: 16px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #fbf7ef;
+            overflow: hidden;
+        }
+        .product-photo {
+            position: relative;
+            height: 170px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            text-align: center;
+            padding: 16px;
+        }
+        .product-photo::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.12;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.9), transparent 40%),
+                        linear-gradient(135deg, rgba(0,0,0,0.18), transparent 60%);
+        }
+        .product-photo .watermark {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            font-size: 3.2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.16);
+            transform: rotate(-18deg);
+            pointer-events: none;
+        }
+        .product-photo .photo-icon {
+            position: relative;
+            font-size: 4.5rem;
+            z-index: 1;
+        }
+        .card-content {
+            position: relative;
+            padding: 16px;
+            z-index: 1;
+        }
+        .card h3 {
+            margin: 0 0 8px;
+            color: #3f5a23;
+        }
+        .card p {
+            margin: 0 0 12px;
+            line-height: 1.5;
+            color: #5a4c2c;
+        }
+        .price {
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: #5a451a;
+        }
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .actions input {
+            width: 60px;
+            padding: 6px 8px;
+            border: 1px solid #c7b89a;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .actions button {
+            flex: 1;
+            border: none;
+            background: #4f772d;
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .actions button:hover {
+            background: #3f6223;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #ece2d2;
+        }
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+        .cart-item span {
+            display: block;
+        }
+        .cart-total {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 2px solid #e2d8c7;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .place-order {
+            width: 100%;
+            margin-top: 18px;
+            padding: 12px;
+            border: none;
+            background: #d56e11;
+            color: #fff;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .place-order:hover {
+            background: #b75a0f;
+        }
+        .message {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: #e8f5e9;
+            color: #255c17;
+            display: none;
+        }
+        .location-box {
+            margin: 18px 0;
+            padding: 14px;
+            border: 1px solid #d8d1c3;
+            border-radius: 12px;
+            background: #faf6ef;
+        }
+        .location-box button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            border: none;
+            background: #4f772d;
+            color: #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .location-box button:hover {
+            background: #3f6223;
+        }
+        .location-status {
+            font-size: 0.95rem;
+            color: #4a4a4a;
+        }
+        #map {
+            width: 100%;
+            height: 220px;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        .tab-page {
+            display: none;
+        }
+        .tab-page.active {
+            display: block;
+        }
+        .footer-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            background: #fff;
+            border-top: 1px solid #e2d8c7;
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.05);
+            padding: 8px 0;
+            z-index: 20;
+        }
+        .footer-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            color: #5a5a5a;
+            font-weight: 700;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+        }
+        .footer-tab.active {
+            color: #4f772d;
+            background: #f2f5ea;
+        }
+        .header-details {
+            margin-top: 12px;
+            background: rgba(255,255,255,0.16);
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: #f4f1e7;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border: 1px solid rgba(255,255,255,0.28);
+        }
+        .user-modal,
+        .address-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 20px;
+            z-index: 50;
+        }
+        .user-modal.active,
+        .address-modal.active {
+            display: flex;
+        }
+        .user-modal .modal-content,
+        .address-modal .modal-content {
+            width: 100%;
+            max-width: 520px;
+            background: #fff;
+            border-radius: 18px;
+            padding: 26px;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.2);
+        }
+        .user-modal h2,
+        .address-modal h2 {
+            margin-top: 0;
+            color: #2f4f22;
+        }
+        .user-modal form,
+        .address-modal form {
+            display: grid;
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .user-modal label,
+        .address-modal label {
+            font-weight: 700;
+            color: #4f4f4f;
+        }
+        .user-modal input,
+        .user-modal textarea,
+        .address-modal input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d8d1c3;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .user-modal textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .user-modal button,
+        .address-modal button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            background: #4f772d;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .user-modal button:hover,
+        .address-modal button:hover {
+            background: #3f6223;
+        }
+        .user-modal .modal-note,
+        .address-modal .modal-note {
+            color: #5a5a5a;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+        @media (max-width: 900px) {
+            gap: 18px;
+        }
+        .account-panel {
+            padding: 16px;
+            border: 1px solid #e2d8c7;
+            border-radius: 14px;
+            background: #fbf7ef;
+        }
+        .account-panel h3 {
+            margin-top: 0;
+            color: #3f5a23;
+        }
+        .list-empty {
+            color: #7d7d7d;
+            font-size: 0.95rem;
+            margin-top: 12px;
+        }
+        .wishlist-item, .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ece2d2;
+        }
+        .wishlist-item:last-child, .order-item:last-child {
+            border-bottom: none;
+        }
+        .wishlist-item button {
+            border: none;
+            background: #4f772d;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .wishlist-item button:hover {
+            background: #3f6223;
+        }
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Fresh From Farmer</h1>
+        <p>Organic dairy products straight from the farm — milk, dahi, ghee, paneer, khoya.</p>
+        <div class="header-strip" id="headerStrip">
+            <div class="home-chip">🏠 Home</div>
+            <div class="address-preview">
+                <strong id="selectedAddressLabel">Select delivery address</strong>
+                <span id="addressSubtitle">Tap to add or change address</span>
+            </div>
+            <button id="editAddressBtn">Change</button>
+        </div>
+        <div id="headerDetails" class="header-details"></div>
+    </header>
+    <div class="user-modal active" id="userModal">
+        <div class="modal-content">
+            <h2>Welcome to Fresh From Farmer</h2>
+            <p class="modal-note">Please enter your details to continue shopping and place orders.</p>
+            <form id="userForm">
+                <label for="userName">Name</label>
+                <input id="userName" type="text" placeholder="Apna naam likhen" required />
+                <label for="userPhone">Mobile Number</label>
+                <input id="userPhone" type="tel" placeholder="Mobile number" required />
+                <label for="userAddress">Delivery Address</label>
+                <textarea id="userAddress" placeholder="Complete address likhen" required></textarea>
+                <button type="submit">Save Details</button>
+                <p class="modal-note">Yeh details aapke order confirmation aur delivery ke liye use hongi.</p>
+            </form>
+        </div>
+    </div>
+    <div class="address-modal" id="addressModal">
+        <div class="modal-content">
+            <h2>Delivery Address</h2>
+            <div class="user-name" id="modalUserName"></div>
+            <div class="address-list" id="addressList">
+                <p class="list-empty">Aapke addresses yahan dikhenge.</p>
+            </div>
+            <input id="newAddressInput" type="text" placeholder="Naya address add karein" />
+            <div class="modal-actions">
+                <button class="primary" id="addAddressBtn">Add Address</button>
+                <button class="secondary" id="useCurrentLocationAddressBtn">Use My Current Location</button>
+                <button class="secondary" id="closeAddressModalBtn">Close</button>
+            </div>
+            <p class="modal-note">Multiple addresses add karein aur delivery address select karein.</p>
+        </div>
+    </div>
+    <main class="container">
+        <section id="homeTab" class="tab-page active">
+            <h2>Products</h2>
+            <div class="product-list" id="products"></div>
+        </section>
+        <section id="cartTab" class="tab-page">
+            <h2>Cart</h2>
+            <div id="cartItems">Aapka cart abhi khaali hai.</div>
+            <div class="location-box">
+                <strong>Delivery Location</strong>
+                <p class="location-status" id="locationStatus">Location not set. Click below or tap map to choose.</p>
+                <button id="setLocationBtn">Set My Location</button>
+                <div id="map"></div>
+            </div>
+            <div class="cart-total" id="cartTotal"></div>
+            <button class="place-order" id="placeOrder">Place Order</button>
+            <div class="message" id="message"></div>
+        </section>
+        <section id="accountTab" class="tab-page">
+            <h2>Account</h2>
+            <div class="account-section">
+                <div class="account-panel">
+                    <h3>Wishlist</h3>
+                    <div id="wishlistItems" class="wishlist-list">
+                        <p class="list-empty">Aapne abhi tak koi wishlist item add nahi kiya.</p>
+                    </div>
+                </div>
+                <div class="account-panel">
+                    <h3>Order History</h3>
+                    <div id="orderHistory" class="order-list">
+                        <p class="list-empty">Abhi tak koi order place nahi hua.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <div class="footer-tabs">
+        <div class="footer-tab active" data-tab="homeTab">Home</div>
+        <div class="footer-tab" data-tab="accountTab">Account</div>
+        <div class="footer-tab" data-tab="cartTab">Cart</div>
+    </div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const products = [
+            { id: 1, name: 'Milk', price: 60, desc: 'Fresh cow milk per litre.', icon: '🥛', color: 'linear-gradient(135deg, #c4d8f1, #637ca4)' },
+            { id: 2, name: 'Dahi', price: 80, desc: 'Ghar ka desi dahi, creamy texture.', icon: '🥣', color: 'linear-gradient(135deg, #f9e8c8, #c59f6a)' },
+            { id: 3, name: 'Ghee', price: 400, desc: 'Shudh desi ghee, pure and fragrant.', icon: '🧈', color: 'linear-gradient(135deg, #f7d68b, #d6881b)' },
+            { id: 4, name: 'Paneer', price: 340, desc: 'Soft paneer, perfect for sabzi.', icon: '🧀', color: 'linear-gradient(135deg, #f9e2d0, #c27f52)' },
+            { id: 5, name: 'Khoya', price: 320, desc: 'Rich khoya for mithai aur desserts.', icon: '🍮', color: 'linear-gradient(135deg, #f4d0e0, #bf6a91)' }
+        ];
+
+        const cart = new Map();
+        const wishlist = new Map();
+        const orderHistory = [];
+        const productsContainer = document.getElementById('products');
+        const cartItems = document.getElementById('cartItems');
+        const cartTotal = document.getElementById('cartTotal');
+        const placeOrderButton = document.getElementById('placeOrder');
+        const message = document.getElementById('message');
+        const locationStatus = document.getElementById('locationStatus');
+        const setLocationBtn = document.getElementById('setLocationBtn');
+        const wishlistItems = document.getElementById('wishlistItems');
+        const orderHistoryContainer = document.getElementById('orderHistory');
+        const footerTabs = document.querySelectorAll('.footer-tab');
+        const userModal = document.getElementById('userModal');
+        const addressModal = document.getElementById('addressModal');
+        const userForm = document.getElementById('userForm');
+        const userNameInput = document.getElementById('userName');
+        const userPhoneInput = document.getElementById('userPhone');
+        const userAddressInput = document.getElementById('userAddress');
+        const headerDetails = document.getElementById('headerDetails');
+        const selectedAddressLabel = document.getElementById('selectedAddressLabel');
+        const addressSubtitle = document.getElementById('addressSubtitle');
+        const editAddressBtn = document.getElementById('editAddressBtn');
+        const modalUserName = document.getElementById('modalUserName');
+        const addressList = document.getElementById('addressList');
+        const newAddressInput = document.getElementById('newAddressInput');
+        const addAddressBtn = document.getElementById('addAddressBtn');
+        const useCurrentLocationAddressBtn = document.getElementById('useCurrentLocationAddressBtn');
+        const closeAddressModalBtn = document.getElementById('closeAddressModalBtn');
+        let userLocation = { lat: null, lng: null, label: 'Location not set' };
+        let userDetails = { name: '', phone: '', address: '' };
+        const addresses = [];
+        let selectedAddress = '';
+        let map;
+        let locationMarker;
+
+        function initMap() {
+            map = L.map('map').setView([26.8467, 80.9462], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            locationMarker = L.marker([26.8467, 80.9462]).addTo(map);
+            map.on('click', function(e) {
+                updateLocation(e.latlng.lat, e.latlng.lng, 'Map location selected');
+            });
+        }
+
+        function updateLocation(lat, lng, label) {
+            userLocation = {
+                lat,
+                lng,
+                label: `${label} (${lat.toFixed(5)}, ${lng.toFixed(5)})`
+            };
+            locationStatus.textContent = userLocation.label;
+            locationMarker.setLatLng([lat, lng]);
+            map.setView([lat, lng], 13);
+        }
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-page').forEach(page => {
+                page.classList.toggle('active', page.id === tabId);
+            });
+            footerTabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabId);
+            });
+            if (tabId === 'accountTab') {
+                renderWishlist();
+                renderOrderHistory();
+            }
+        }
+        function showUserDetails() {
+            headerDetails.innerHTML = `
+                <strong>${userDetails.name}</strong><br />
+                ${userDetails.phone}
+            `;
+        }
+        function showSelectedAddress() {
+            selectedAddressLabel.textContent = selectedAddress || 'Select delivery address';
+            addressSubtitle.textContent = selectedAddress ? 'Tap to change address' : 'Tap to add address';
+        }
+        function openAddressModal() {
+            if (!userDetails.name) {
+                userModal.classList.add('active');
+                return;
+            }
+            addressModal.classList.add('active');
+            modalUserName.textContent = userDetails.name;
+            renderAddressList();
+        }
+        function closeAddressModal() {
+            addressModal.classList.remove('active');
+        }
+        function saveUserDetails(event) {
+            event.preventDefault();
+            const name = userNameInput.value.trim();
+            const phone = userPhoneInput.value.trim();
+            const address = userAddressInput.value.trim();
+            if (!name || !phone || !address) {
+                alert('Sabhi fields bharna zaroori hai.');
+                return;
+            }
+            userDetails = { name, phone, address };
+            if (!addresses.includes(address)) {
+                addresses.unshift(address);
+            }
+            selectedAddress = address;
+            showUserDetails();
+            showSelectedAddress();
+            userModal.classList.remove('active');
+            showMessage('Aapki details save ho gayi. Ab shopping shuru karein.');
+        }
+        function renderAddressList() {
+            if (addresses.length === 0) {
+                addressList.innerHTML = '<p class="list-empty">Aapke addresses yahan dikhenge.</p>';
+                return;
+            }
+            addressList.innerHTML = addresses.map(addr => `
+                <div class="address-item">
+                    <span>${addr}</span>
+                    <button type="button" onclick="selectAddress('${addr.replace(/'/g, "\\'")}')">Select</button>
+                </div>
+            `).join('');
+        }
+        function addAddress() {
+            const address = newAddressInput.value.trim();
+            if (!address) {
+                alert('Naya address likhen.');
+                return;
+            }
+            if (!addresses.includes(address)) {
+                addresses.unshift(address);
+            }
+            selectedAddress = address;
+            newAddressInput.value = '';
+            renderAddressList();
+            showSelectedAddress();
+            showMessage('Naya address add kar diya gaya.');
+        }
+        function selectAddress(address) {
+            selectedAddress = address;
+            showSelectedAddress();
+            showMessage('Delivery address select kar diya gaya.');
+        }
+        function useCurrentLocationAddress() {
+            if (!navigator.geolocation) {
+                showMessage('Geolocation supported nahi hai.');
+                return;
+            }
+            showMessage('Current location dhundh rahe hain...');
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const address = `Current location (${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)})`;
+                    if (!addresses.includes(address)) {
+                        addresses.unshift(address);
+                    }
+                    selectedAddress = address;
+                    renderAddressList();
+                    showSelectedAddress();
+                    showMessage('Current location address set ho gaya.');
+                },
+                function() {
+                    showMessage('Location find karne mein problem hui.');
+                }
+            );
+        }
+        function toggleWishlist(productId) {
+            const product = products.find(p => p.id === productId);
+            if (wishlist.has(productId)) {
+                wishlist.delete(productId);
+                showMessage(`${product.name} removed from wishlist.`);
+            } else {
+                wishlist.set(productId, product);
+                showMessage(`${product.name} added to wishlist.`);
+            }
+            renderProducts();
+        }
+        function renderWishlist() {
+            if (wishlist.size === 0) {
+                wishlistItems.innerHTML = '<p class="list-empty">Aapne abhi tak koi wishlist item add nahi kiya.</p>';
+                return;
+            }
+            const html = [];
+            wishlist.forEach(item => {
+                html.push(`
+                    <div class="wishlist-item">
+                        <span>${item.name} - ₹ ${item.price}</span>
+                        <button onclick="addToCart(${item.id})">Add to Cart</button>
+                    </div>
+                `);
+            });
+            wishlistItems.innerHTML = html.join('');
+        }
+        function renderOrderHistory() {
+            if (orderHistory.length === 0) {
+                orderHistoryContainer.innerHTML = '<p class="list-empty">Abhi tak koi order place nahi hua.</p>';
+                return;
+            }
+            orderHistoryContainer.innerHTML = orderHistory.map(order => `
+                <div class="order-item">
+                    <span>${order.summary}</span>
+                    <span>₹ ${order.total}</span>
+                </div>
+            `).join('');
+        }
+        function placeOrder() {
+            if (!userDetails.name || !userDetails.phone || !userDetails.address) {
+                alert('Kripya apna naam, mobile aur address pehle bharen.');
+                userModal.style.display = 'flex';
+                return;
+            }
+            if (cart.size === 0) {
+                showMessage('Sabse pehle apne cart mein koi product add karein.');
+                return;
+            }
+            if (!userLocation.lat || !userLocation.lng) {
+                showLocationError('Kripya delivery location set karein.');
+                return;
+            }
+            const orderItems = [];
+            let total = 0;
+            cart.forEach(item => {
+                orderItems.push(`${item.name} x ${item.quantity}`);
+                total += item.quantity * item.price;
+            });
+            const summaryText = orderItems.join('\n');
+            orderHistory.unshift({
+                summary: `${orderItems.join(', ')}`,
+                total,
+                location: userLocation.label,
+                date: new Date().toLocaleString()
+            });
+            const summary = `Aapka order place ho gaya!\n\nItems:\n${summaryText}\n\nTotal: ₹ ${total}\n\nLocation:\n${userLocation.label}`;
+            alert(summary);
+            cart.clear();
+            renderCart();
+            showMessage('Shukriya! Aapka order successfully place ho gaya.');
+            switchTab('accountTab');
+        }
+
+        function showLocationError(text) {
+            locationStatus.textContent = text;
+            showMessage(text);
+        }
+
+        function setLocation() {
+            if (!navigator.geolocation) {
+                showLocationError('Geolocation supported nahi hai.');
+                return;
+            }
+            showMessage('Location dhundh rahe hain...');
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    updateLocation(position.coords.latitude, position.coords.longitude, 'Current location');
+                    showMessage('Location set ho gayi.');
+                },
+                function() {
+                    showLocationError('Location find karne mein problem hui.');
+                }
+            );
+        }
+
+        function renderProducts() {
+            productsContainer.innerHTML = products.map(product => `
+                <article class="card">
+                    <div class="product-photo" style="background: ${product.color};">
+                        <div class="watermark">${product.name}</div>
+                        <div class="photo-icon">${product.icon}</div>
+                    </div>
+                    <div class="card-content">
+                        <h3>${product.name}</h3>
+                        <p>${product.desc}</p>
+                        <div class="price">₹ ${product.price} / unit</div>
+                        <div class="actions">
+                            <input type="number" id="quantity-${product.id}" min="1" value="1" />
+                            <button onclick="addToCart(${product.id})">Add to Cart</button>
+                        </div>
+                        <button onclick="toggleWishlist(${product.id})" style="margin-top:12px;width:100%;border:none;background:#f2f2f2;color:#444;padding:10px;border-radius:8px;cursor:pointer;">${wishlist.has(product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}</button>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        function renderCart() {
+            if (cart.size === 0) {
+                cartItems.innerHTML = 'Aapka cart abhi khaali hai.';
+                cartTotal.textContent = '';
+                return;
+            }
+            let total = 0;
+            const itemsHtml = [];
+            cart.forEach((item) => {
+                const subTotal = item.quantity * item.price;
+                total += subTotal;
+                itemsHtml.push(`
+                    <div class="cart-item">
+                        <span>${item.name} x ${item.quantity}</span>
+                        <span>₹ ${subTotal}</span>
+                    </div>
+                `);
+            });
+            cartItems.innerHTML = itemsHtml.join('');
+            cartTotal.textContent = `Total: ₹ ${total}`;
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const quantityInput = document.getElementById(`quantity-${productId}`);
+            const quantity = quantityInput ? Number(quantityInput.value) || 1 : 1;
+            if (quantityInput && quantity < 1) {
+                quantityInput.value = 1;
+                return;
+            }
+            if (cart.has(productId)) {
+                const existing = cart.get(productId);
+                existing.quantity += quantity;
+                cart.set(productId, existing);
+            } else {
+                cart.set(productId, {
+                    name: product.name,
+                    price: product.price,
+                    quantity
+                });
+            }
+            renderCart();
+            showMessage(`${product.name} added to cart (${quantity}).`);
+        }
+
+        function showMessage(text) {
+            message.textContent = text;
+            message.style.display = 'block';
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 3000);
+        }
+
+        footerTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
+        placeOrderButton.addEventListener('click', placeOrder);
+        setLocationBtn.addEventListener('click', setLocation);
+        editAddressBtn.addEventListener('click', openAddressModal);
+        addAddressBtn.addEventListener('click', addAddress);
+        useCurrentLocationAddressBtn.addEventListener('click', useCurrentLocationAddress);
+        closeAddressModalBtn.addEventListener('click', closeAddressModal);
+        userForm.addEventListener('submit', saveUserDetails);
+        renderProducts();
+        renderCart();
+        initMap();
+    </script>
+</body>
+</html>
